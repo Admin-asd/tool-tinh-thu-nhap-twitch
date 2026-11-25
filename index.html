@@ -1,0 +1,547 @@
+<!doctype html>
+<!-- Vị trí file: wp-content/gb-tools/calculators/cong-cu-tinh-thu-nhap-twitch.html -->
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Công cụ tính thu nhập Twitch online - Twitch Earnings Calculator</title>
+<meta name="description" content="Ước tính thu nhập streamer Twitch hằng tháng, tuần, ngày, năm và mỗi giờ từ Subscriptions, quảng cáo, Bits và quyên góp, kèm so sánh Affiliate vs Partner và dự báo tăng trưởng.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --font-sans: Roboto, ui-sans-serif, system-ui, sans-serif;
+    --color-primary: #fdca1e; --color-primary-hover: #e8b008; --color-primary-soft: #fffbeb;
+    --color-primary-ink: #9c6406; --color-ink: #0f172a; --color-neutral: #e2e8f0;
+  }
+</style>
+</head>
+<body class="bg-white font-sans text-ink antialiased">
+<main class="mx-auto max-w-4xl p-4 sm:p-6 space-y-6">
+
+  <!-- 1. Ví dụ nhanh -->
+  <div class="flex flex-wrap items-center gap-2.5">
+    <span class="text-xs font-bold text-slate-600 mr-1">Ví dụ nhanh:</span>
+    <button type="button" onclick="applyPreset('casual_affiliate')" class="rounded-full border border-neutral hover:border-primary bg-white hover:bg-primary-soft px-4 py-1.5 text-xs font-semibold text-slate-700 hover:text-ink transition-colors cursor-pointer shadow-2xs">
+      Affiliate thông thường
+    </button>
+    <button type="button" onclick="applyPreset('growing_affiliate')" class="rounded-full border border-neutral hover:border-primary bg-white hover:bg-primary-soft px-4 py-1.5 text-xs font-semibold text-slate-700 hover:text-ink transition-colors cursor-pointer shadow-2xs">
+      Affiliate đang phát triển
+    </button>
+    <button type="button" onclick="applyPreset('mid_partner')" class="rounded-full border border-neutral hover:border-primary bg-white hover:bg-primary-soft px-4 py-1.5 text-xs font-semibold text-slate-700 hover:text-ink transition-colors cursor-pointer shadow-2xs">
+      Partner tầm trung
+    </button>
+    <button type="button" onclick="applyPreset('top_partner')" class="rounded-full border border-neutral hover:border-primary bg-white hover:bg-primary-soft px-4 py-1.5 text-xs font-semibold text-slate-700 hover:text-ink transition-colors cursor-pointer shadow-2xs">
+      Partner hàng đầu
+    </button>
+  </div>
+
+  <!-- 2. Khung nhập liệu cấu hình kênh Twitch -->
+  <div class="bg-white border border-neutral rounded-2xl p-6 shadow-xs space-y-6">
+
+    <!-- TRẠNG THÁI STREAMER -->
+    <div class="space-y-3">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-primary-ink border-b border-neutral pb-2">
+        TRẠNG THÁI STREAMER
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label id="cardTierAffiliate" onclick="selectTier('affiliate')" class="flex items-start gap-3.5 rounded-2xl border-2 border-primary bg-primary-soft/50 p-4 cursor-pointer transition-all">
+          <input type="radio" name="streamerTier" id="radioAffiliate" value="affiliate" checked class="mt-1 accent-[#fdca1e]">
+          <div class="space-y-0.5">
+            <div class="font-bold text-sm text-ink flex items-center gap-1.5">
+              <span>&#127918;</span>
+              <span>Affiliate</span>
+            </div>
+            <div class="text-xs text-slate-600">Chia sẻ 50% sub, quảng cáo cơ bản</div>
+          </div>
+        </label>
+
+        <label id="cardTierPartner" onclick="selectTier('partner')" class="flex items-start gap-3.5 rounded-2xl border border-neutral bg-white hover:border-primary p-4 cursor-pointer transition-all">
+          <input type="radio" name="streamerTier" id="radioPartner" value="partner" class="mt-1 accent-[#fdca1e]">
+          <div class="space-y-0.5">
+            <div class="font-bold text-sm text-ink flex items-center gap-1.5">
+              <span>&#128081;</span>
+              <span>Partner</span>
+            </div>
+            <div class="text-xs text-slate-600">Chia sẻ lên đến 70%, quảng cáo đầy đủ</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- CHỈ SỐ KÊNH -->
+    <div class="space-y-4">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-primary-ink border-b border-neutral pb-2">
+        CHỈ SỐ KÊNH
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label for="avgViewers" class="block text-xs font-bold text-ink">
+            Người xem đồng thời trung bình <span class="text-rose-500">*</span>
+          </label>
+          <input type="number" id="avgViewers" min="0" step="1" placeholder="VD: 150" class="w-full rounded-xl border border-neutral px-3.5 py-3 text-sm font-mono font-bold text-ink outline-none focus:border-primary bg-white">
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="totalSubs" class="block text-xs font-bold text-ink">
+            Tổng số người đăng ký <span class="text-rose-500">*</span>
+          </label>
+          <input type="number" id="totalSubs" min="0" step="1" placeholder="VD: 500" class="w-full rounded-xl border border-neutral px-3.5 py-3 text-sm font-mono font-bold text-ink outline-none focus:border-primary bg-white">
+        </div>
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="weeklyHours" class="block text-xs font-bold text-ink">
+          Số giờ Stream / Tuần <span class="text-rose-500">*</span>
+        </label>
+        <input type="number" id="weeklyHours" min="0.5" max="168" step="0.5" placeholder="VD: 25" class="w-full rounded-xl border border-neutral px-3.5 py-3 text-sm font-mono font-bold text-ink outline-none focus:border-primary bg-white">
+      </div>
+    </div>
+
+    <!-- THU NHẬP BỔ SUNG (TÙY CHỌN) -->
+    <div class="space-y-4">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-primary-ink border-b border-neutral pb-2">
+        THU NHẬP BỔ SUNG (TÙY CHỌN)
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label for="monthlyBits" class="block text-xs font-bold text-ink">Bits hàng tháng</label>
+          <input type="number" id="monthlyBits" min="0" step="1" placeholder="VD: 5.000" class="w-full rounded-xl border border-neutral px-3.5 py-3 text-sm font-mono font-bold text-ink outline-none focus:border-primary bg-white">
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="monthlyDonations" class="block text-xs font-bold text-ink">Quyên góp hàng tháng ($)</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-mono font-bold text-slate-400">$</span>
+            <input type="number" id="monthlyDonations" min="0" step="any" placeholder="VD: 200" class="w-full rounded-xl border border-neutral pl-8 pr-3.5 py-3 text-sm font-mono font-bold text-ink outline-none focus:border-primary bg-white">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TÙY CHỈNH NÂNG CAO (Thu gọn/mở rộng) -->
+    <div class="border-t border-dashed border-neutral pt-4">
+      <button type="button" onclick="toggleAdvanced()" class="text-xs font-bold text-primary-ink hover:underline cursor-pointer flex items-center gap-1.5">
+        <span id="advArrow">&#9656;</span>
+        <span>Tùy chỉnh nâng cao (Tỷ lệ chia sub, Quảng cáo/giờ, CPM)</span>
+      </button>
+
+      <div id="advancedPanel" class="hidden mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-xl bg-slate-50 border border-neutral p-4">
+        <div class="space-y-1">
+          <label for="subSplitInput" class="block text-xs font-bold text-ink">Tỷ lệ chia sub (%)</label>
+          <input type="number" id="subSplitInput" value="50" min="10" max="100" step="1" class="w-full rounded-xl border border-neutral px-3 py-2 text-xs font-mono font-bold text-ink bg-white outline-none focus:border-primary">
+        </div>
+        <div class="space-y-1">
+          <label for="adsPerHourInput" class="block text-xs font-bold text-ink">Số quảng cáo / giờ</label>
+          <input type="number" id="adsPerHourInput" value="2" min="0" max="15" step="0.5" class="w-full rounded-xl border border-neutral px-3 py-2 text-xs font-mono font-bold text-ink bg-white outline-none focus:border-primary">
+        </div>
+        <div class="space-y-1">
+          <label for="cpmInput" class="block text-xs font-bold text-ink">CPM quảng cáo ($)</label>
+          <input type="number" id="cpmInput" value="3.50" min="0.1" step="0.1" class="w-full rounded-xl border border-neutral px-3 py-2 text-xs font-mono font-bold text-ink bg-white outline-none focus:border-primary">
+        </div>
+      </div>
+    </div>
+
+    <!-- Nút Tính toán thu nhập -->
+    <button type="button" onclick="calculateTwitchEarnings()" class="w-full min-h-12 rounded-xl bg-primary px-6 font-bold text-sm text-ink hover:bg-primary-hover shadow-xs cursor-pointer transition-colors">
+      Tính toán thu nhập
+    </button>
+
+  </div>
+
+  <!-- 3. KHU VỰC KẾT QUẢ (Ẩn trước khi tính) -->
+  <div id="resultsSection" class="space-y-6 hidden">
+
+    <!-- Tổng quan Thu nhập & Dự báo các kỳ -->
+    <div class="bg-white border border-neutral rounded-2xl p-6 shadow-xs grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      
+      <!-- Cột trái: Vòng tròn ước tính hàng tháng + Cấp độ kênh -->
+      <div class="lg:col-span-5 flex flex-col items-center justify-center space-y-3">
+        <div class="relative w-44 h-44 rounded-full flex items-center justify-center" style="background: conic-gradient(#fdca1e 0% 65%, #f1f5f9 65% 100%);">
+          <div class="w-36 h-36 rounded-full bg-white flex flex-col items-center justify-center text-center p-2 shadow-2xs">
+            <div id="circleMonthlyTotal" class="text-2xl font-mono font-bold text-ink">$202.59</div>
+            <div class="text-xs text-slate-500 mt-0.5">Ước tính hàng tháng</div>
+          </div>
+        </div>
+
+        <span id="channelTierBadge" class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-amber-300 bg-primary-soft text-primary-ink text-xs font-bold">
+          <span>&#128181;</span>
+          <span>Việc Phụ Kiếm Thêm</span>
+        </span>
+
+        <div id="channelStatusLabel" class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+          <span>&#127918;</span>
+          <span>Twitch Affiliate</span>
+        </div>
+      </div>
+
+      <!-- Cột phải: Các thẻ Hàng ngày, Hàng tuần, Hàng tháng, Hàng năm, Mỗi giờ -->
+      <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div class="rounded-2xl border border-neutral border-l-4 border-l-primary bg-slate-50/40 p-4 space-y-1">
+          <div class="text-[11px] font-bold uppercase text-slate-500">HÀNG NGÀY</div>
+          <div id="resDaily" class="text-xl font-mono font-bold text-ink">$6.75</div>
+        </div>
+
+        <div class="rounded-2xl border border-neutral border-l-4 border-l-amber-500 bg-slate-50/40 p-4 space-y-1">
+          <div class="text-[11px] font-bold uppercase text-slate-500">HÀNG TUẦN</div>
+          <div id="resWeekly" class="text-xl font-mono font-bold text-ink">$46.79</div>
+        </div>
+
+        <div class="rounded-2xl border border-neutral border-l-4 border-l-primary-ink bg-slate-50/40 p-4 space-y-1">
+          <div class="text-[11px] font-bold uppercase text-slate-500">HÀNG THÁNG</div>
+          <div id="resMonthly" class="text-xl font-mono font-bold text-ink">$202.59</div>
+        </div>
+
+        <div class="rounded-2xl border border-neutral border-l-4 border-l-emerald-500 bg-slate-50/40 p-4 space-y-1">
+          <div class="text-[11px] font-bold uppercase text-slate-500">HÀNG NĂM</div>
+          <div id="resYearly" class="text-xl font-mono font-bold text-ink">$2,431.12</div>
+        </div>
+
+        <div class="sm:col-span-2 rounded-2xl border border-neutral border-l-4 border-l-primary bg-slate-50/40 p-4 space-y-1">
+          <div class="text-[11px] font-bold uppercase text-slate-500">MỖI GIỜ</div>
+          <div id="resHourly" class="text-2xl font-mono font-bold text-primary-ink">$4.68</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Phân bổ doanh thu & Doanh thu theo nguồn -->
+    <div class="bg-white border border-neutral rounded-2xl p-6 shadow-xs space-y-6">
+      <div class="space-y-3">
+        <div class="font-bold text-base text-ink flex items-center gap-2">
+          <span>&#128202;</span>
+          <span>Phân bổ doanh thu</span>
+        </div>
+        <p class="text-xs text-slate-500">Cách thu nhập Twitch ước tính của bạn được phân bổ qua các nguồn doanh thu:</p>
+
+        <!-- Thanh phân bổ phần trăm -->
+        <div id="breakdownBar" class="h-3.5 w-full rounded-full overflow-hidden flex bg-slate-100">
+          <!-- Render JS -->
+        </div>
+
+        <!-- Chú thích tỷ lệ 4 nguồn -->
+        <div id="breakdownLegend" class="flex flex-wrap items-center gap-5 text-xs font-medium text-slate-700 pt-1">
+          <!-- Render JS -->
+        </div>
+      </div>
+
+      <div class="border-t border-neutral pt-5 space-y-4">
+        <div class="font-bold text-base text-ink flex items-center gap-2">
+          <span>&#128176;</span>
+          <span>Doanh thu theo nguồn</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Đăng ký (Subs) -->
+          <div class="rounded-2xl border border-neutral bg-slate-50/30 p-4 flex items-start gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-primary-soft text-primary-ink font-bold flex items-center justify-center shrink-0">&#9733;</div>
+            <div class="space-y-0.5">
+              <div class="text-[11px] font-bold uppercase text-slate-500">ĐĂNG KÝ (SUBS)</div>
+              <div id="srcSubAmount" class="text-xl font-mono font-bold text-ink">$168.50/tháng</div>
+              <div id="srcSubDesc" class="text-xs text-slate-500">50 subs &times; 50% chia sẻ</div>
+            </div>
+          </div>
+
+          <!-- Doanh thu quảng cáo -->
+          <div class="rounded-2xl border border-neutral bg-slate-50/30 p-4 flex items-start gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 font-bold flex items-center justify-center shrink-0">&#9654;</div>
+            <div class="space-y-0.5">
+              <div class="text-[11px] font-bold uppercase text-slate-500">DOANH THU QUẢNG CÁO</div>
+              <div id="srcAdAmount" class="text-xl font-mono font-bold text-ink">$9.09/tháng</div>
+              <div id="srcAdDesc" class="text-xs text-slate-500">30 người xem &times; 2 QC/giờ &times; $3.50 CPM</div>
+            </div>
+          </div>
+
+          <!-- Bits -->
+          <div class="rounded-2xl border border-neutral bg-slate-50/30 p-4 flex items-start gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-yellow-100 text-yellow-800 font-bold flex items-center justify-center shrink-0">&#9670;</div>
+            <div class="space-y-0.5">
+              <div class="text-[11px] font-bold uppercase text-slate-500">BITS</div>
+              <div id="srcBitsAmount" class="text-xl font-mono font-bold text-ink">$5.00/tháng</div>
+              <div id="srcBitsDesc" class="text-xs text-slate-500">500 bits &times; $0.01 mỗi bit</div>
+            </div>
+          </div>
+
+          <!-- Đóng góp -->
+          <div class="rounded-2xl border border-neutral bg-slate-50/30 p-4 flex items-start gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 font-bold flex items-center justify-center shrink-0">&#9829;</div>
+            <div class="space-y-0.5">
+              <div class="text-[11px] font-bold uppercase text-slate-500">ĐÓNG GÓP</div>
+              <div id="srcDonAmount" class="text-xl font-mono font-bold text-ink">$20.00/tháng</div>
+              <div class="text-xs text-slate-500">Đóng góp trực tiếp từ người xem</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- So sánh Affiliate vs Partner -->
+    <div class="bg-white border border-neutral rounded-2xl p-6 shadow-xs space-y-5">
+      <div class="space-y-1">
+        <div class="font-bold text-base text-ink flex items-center gap-2">
+          <span>&#128081;</span>
+          <span>So sánh Affiliate vs Partner</span>
+        </div>
+        <p class="text-xs text-slate-500">Xem bạn có thể kiếm thêm bao nhiêu khi trở thành Twitch Partner với tỷ lệ chia doanh thu được cải thiện (60% sub &amp; 1.5x quảng cáo):</p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-5 py-2">
+        <div class="rounded-2xl border border-neutral bg-slate-50/50 px-7 py-5 text-center space-y-1 min-w-[200px]">
+          <div class="text-[11px] font-bold uppercase text-slate-500">HIỆN TẠI (AFFILIATE)</div>
+          <div id="cmpCurrentVal" class="text-2xl font-mono font-bold text-ink">$202.59</div>
+          <div class="text-xs text-slate-500">/tháng</div>
+        </div>
+
+        <div class="text-xl font-bold text-primary-ink rotate-90 sm:rotate-0">&rarr;</div>
+
+        <div class="rounded-2xl border-2 border-primary bg-primary-soft/50 px-7 py-5 text-center space-y-1.5 min-w-[220px]">
+          <div class="text-[11px] font-bold uppercase text-primary-ink leading-tight">VỚI TƯ CÁCH<br>PARTNER</div>
+          <div id="cmpPartnerVal" class="text-2xl font-mono font-bold text-ink">$240.84</div>
+          <div class="text-xs text-slate-500">/tháng</div>
+          <div id="cmpGainBadge" class="inline-block px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-mono font-bold">
+            +$38.25 (+19%)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dự báo tăng trưởng (2x, 5x, 10x) -->
+    <div class="bg-white border border-neutral rounded-2xl p-6 shadow-xs space-y-4">
+      <div class="space-y-1">
+        <div class="font-bold text-base text-ink flex items-center gap-2">
+          <span>&#128200;</span>
+          <span>Dự báo tăng trưởng</span>
+        </div>
+        <p class="text-xs text-slate-500">Thu nhập hàng tháng ước tính nếu kênh của bạn phát triển (người xem &amp; subs tăng theo hệ số, quyên góp tăng 80% hệ số):</p>
+      </div>
+
+      <div id="growthCards" class="space-y-3">
+        <!-- Render JS -->
+      </div>
+    </div>
+
+    <!-- Gợi ý tối ưu hóa cá nhân hóa -->
+    <div class="rounded-2xl border border-amber-300 bg-primary-soft/60 p-5 space-y-2 text-xs text-slate-700">
+      <div class="font-bold text-sm text-primary-ink flex items-center gap-1.5">
+        <span>&#128161;</span>
+        <span>Gợi ý kiếm tiền cá nhân hóa</span>
+      </div>
+      <p id="personalTipText" class="leading-relaxed"></p>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+  // Giá trị trung bình 1 sub dựa theo giả định: 80% Tier 1 ($4.99), 15% Tier 2 ($9.99), 5% Tier 3 ($24.99)
+  const AVG_SUB_GROSS = (0.80 * 4.99) + (0.15 * 9.99) + (0.05 * 24.99); // $6.74
+
+  function selectTier(tier) {
+    document.getElementById('radioAffiliate').checked = (tier === 'affiliate');
+    document.getElementById('radioPartner').checked = (tier === 'partner');
+
+    const cardAff = document.getElementById('cardTierAffiliate');
+    const cardPar = document.getElementById('cardTierPartner');
+
+    if (tier === 'affiliate') {
+      cardAff.className = 'flex items-start gap-3.5 rounded-2xl border-2 border-primary bg-primary-soft/50 p-4 cursor-pointer transition-all';
+      cardPar.className = 'flex items-start gap-3.5 rounded-2xl border border-neutral bg-white hover:border-primary p-4 cursor-pointer transition-all';
+      document.getElementById('subSplitInput').value = 50;
+    } else {
+      cardPar.className = 'flex items-start gap-3.5 rounded-2xl border-2 border-primary bg-primary-soft/50 p-4 cursor-pointer transition-all';
+      cardAff.className = 'flex items-start gap-3.5 rounded-2xl border border-neutral bg-white hover:border-primary p-4 cursor-pointer transition-all';
+      document.getElementById('subSplitInput').value = 60;
+    }
+  }
+
+  function toggleAdvanced() {
+    const panel = document.getElementById('advancedPanel');
+    const arrow = document.getElementById('advArrow');
+    const isHidden = panel.classList.toggle('hidden');
+    arrow.innerHTML = isHidden ? '&#9656;' : '&#9662;';
+  }
+
+  function applyPreset(key) {
+    if (key === 'casual_affiliate') {
+      selectTier('affiliate');
+      document.getElementById('avgViewers').value = 30;
+      document.getElementById('totalSubs').value = 50;
+      document.getElementById('weeklyHours').value = 10;
+      document.getElementById('monthlyBits').value = 500;
+      document.getElementById('monthlyDonations').value = 20;
+      document.getElementById('adsPerHourInput').value = 2;
+      document.getElementById('cpmInput').value = 3.50;
+    } else if (key === 'growing_affiliate') {
+      selectTier('affiliate');
+      document.getElementById('avgViewers').value = 150;
+      document.getElementById('totalSubs').value = 500;
+      document.getElementById('weeklyHours').value = 25;
+      document.getElementById('monthlyBits').value = 5000;
+      document.getElementById('monthlyDonations').value = 200;
+      document.getElementById('adsPerHourInput').value = 3;
+      document.getElementById('cpmInput').value = 4.00;
+    } else if (key === 'mid_partner') {
+      selectTier('partner');
+      document.getElementById('avgViewers').value = 800;
+      document.getElementById('totalSubs').value = 2500;
+      document.getElementById('weeklyHours').value = 32;
+      document.getElementById('monthlyBits').value = 25000;
+      document.getElementById('monthlyDonations').value = 900;
+      document.getElementById('adsPerHourInput').value = 4;
+      document.getElementById('cpmInput').value = 5.00;
+    } else if (key === 'top_partner') {
+      selectTier('partner');
+      document.getElementById('avgViewers').value = 5000;
+      document.getElementById('totalSubs').value = 15000;
+      document.getElementById('weeklyHours').value = 40;
+      document.getElementById('monthlyBits').value = 120000;
+      document.getElementById('monthlyDonations').value = 4500;
+      document.getElementById('adsPerHourInput').value = 5;
+      document.getElementById('cpmInput').value = 6.50;
+    }
+    calculateTwitchEarnings();
+  }
+
+  function computeMonthlyBreakdown(viewers, subs, hoursPerWeek, bits, donations, subSharePct, adsPerHour, cpm, adMultiplier = 1.0) {
+    const subMonthly = subs * AVG_SUB_GROSS * (subSharePct / 100);
+    const monthlyHours = hoursPerWeek * 4.33;
+    const totalAdImpressions = viewers * adsPerHour * monthlyHours;
+    const adMonthly = (totalAdImpressions / 1000) * cpm * adMultiplier;
+    const bitsMonthly = bits * 0.01;
+    const donMonthly = donations;
+
+    const totalMonthly = subMonthly + adMonthly + bitsMonthly + donMonthly;
+    return { subMonthly, adMonthly, bitsMonthly, donMonthly, totalMonthly, monthlyHours };
+  }
+
+  function classifyChannel(viewers, subs) {
+    if (viewers >= 3000 || subs >= 8000) return { badge: 'Top 0.1% Creator', rank: 'Top 0.1%' };
+    if (viewers >= 500 || subs >= 1500)  return { badge: 'Kênh Partner Nổi Bật', rank: 'Top 2%' };
+    if (viewers >= 100 || subs >= 300)   return { badge: 'Kênh Đang Tăng Trưởng', rank: 'Top 15%' };
+    if (viewers >= 20 || subs >= 30)     return { badge: 'Việc Phụ Kiếm Thêm', rank: 'Getting Started' };
+    return { badge: 'Khởi Đầu Kênh Mới', rank: 'Getting Started' };
+  }
+
+  function calculateTwitchEarnings() {
+    const isPartner = document.getElementById('radioPartner').checked;
+    const viewers = Math.max(0, parseFloat(document.getElementById('avgViewers').value) || 0);
+    const subs = Math.max(0, parseFloat(document.getElementById('totalSubs').value) || 0);
+    const weeklyHours = Math.max(0.5, parseFloat(document.getElementById('weeklyHours').value) || 10);
+    const bits = Math.max(0, parseFloat(document.getElementById('monthlyBits').value) || 0);
+    const donations = Math.max(0, parseFloat(document.getElementById('monthlyDonations').value) || 0);
+
+    const subSharePct = Math.max(0, parseFloat(document.getElementById('subSplitInput').value) || (isPartner ? 60 : 50));
+    const adsPerHour = Math.max(0, parseFloat(document.getElementById('adsPerHourInput').value) || 2);
+    const cpm = Math.max(0, parseFloat(document.getElementById('cpmInput').value) || 3.50);
+
+    const data = computeMonthlyBreakdown(viewers, subs, weeklyHours, bits, donations, subSharePct, adsPerHour, cpm, 1.0);
+    const totalMonthly = data.totalMonthly;
+    const daily = totalMonthly / 30;
+    const weekly = totalMonthly / 4.33;
+    const yearly = totalMonthly * 12;
+    const hourly = data.monthlyHours > 0 ? totalMonthly / data.monthlyHours : 0;
+
+    // Cập nhật vòng tròn & các thẻ kỳ thời gian
+    document.getElementById('circleMonthlyTotal').textContent = `$${totalMonthly.toFixed(2)}`;
+    document.getElementById('resDaily').textContent = `$${daily.toFixed(2)}`;
+    document.getElementById('resWeekly').textContent = `$${weekly.toFixed(2)}`;
+    document.getElementById('resMonthly').textContent = `$${totalMonthly.toFixed(2)}`;
+    document.getElementById('resYearly').textContent = `$${yearly.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    document.getElementById('resHourly').textContent = `$${hourly.toFixed(2)}`;
+
+    const cls = classifyChannel(viewers, subs);
+    document.getElementById('channelTierBadge').innerHTML = `<span>&#128181;</span><span>${cls.badge} (${cls.rank})</span>`;
+    document.getElementById('channelStatusLabel').innerHTML = isPartner
+      ? '<span>&#128081;</span><span>Twitch Partner</span>'
+      : '<span>&#127918;</span><span>Twitch Affiliate</span>';
+
+    // Phân bổ % 4 nguồn thu
+    const safeTotal = totalMonthly > 0 ? totalMonthly : 1;
+    const pctSub = (data.subMonthly / safeTotal) * 100;
+    const pctAd  = (data.adMonthly / safeTotal) * 100;
+    const pctBit = (data.bitsMonthly / safeTotal) * 100;
+    const pctDon = (data.donMonthly / safeTotal) * 100;
+
+    document.getElementById('breakdownBar').innerHTML = `
+      <div style="width: ${pctSub.toFixed(1)}%" class="bg-amber-500 h-full" title="Subs ${pctSub.toFixed(1)}%"></div>
+      <div style="width: ${pctAd.toFixed(1)}%" class="bg-primary h-full" title="Quảng cáo ${pctAd.toFixed(1)}%"></div>
+      <div style="width: ${pctBit.toFixed(1)}%" class="bg-yellow-300 h-full" title="Bits ${pctBit.toFixed(1)}%"></div>
+      <div style="width: ${pctDon.toFixed(1)}%" class="bg-emerald-500 h-full" title="Đóng góp ${pctDon.toFixed(1)}%"></div>
+    `;
+
+    document.getElementById('breakdownLegend').innerHTML = `
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>Subs ${pctSub.toFixed(1)}%</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-primary"></span>Quảng cáo ${pctAd.toFixed(1)}%</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-yellow-300"></span>Bits ${pctBit.toFixed(1)}%</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Đóng góp ${pctDon.toFixed(1)}%</span>
+    `;
+
+    // Chi tiết 4 thẻ nguồn thu
+    document.getElementById('srcSubAmount').textContent = `$${data.subMonthly.toFixed(2)}/tháng`;
+    document.getElementById('srcSubDesc').textContent = `${Math.round(subs)} subs × ${subSharePct}% chia sẻ`;
+
+    document.getElementById('srcAdAmount').textContent = `$${data.adMonthly.toFixed(2)}/tháng`;
+    document.getElementById('srcAdDesc').textContent = `${Math.round(viewers)} người xem × ${adsPerHour} QC/giờ × $${cpm.toFixed(2)} CPM`;
+
+    document.getElementById('srcBitsAmount').textContent = `$${data.bitsMonthly.toFixed(2)}/tháng`;
+    document.getElementById('srcBitsDesc').textContent = `${Math.round(bits).toLocaleString('en-US')} bits × $0.01 mỗi bit`;
+
+    document.getElementById('srcDonAmount').textContent = `$${data.donMonthly.toFixed(2)}/tháng`;
+
+    // So sánh Affiliate vs Partner (Partner giả định 60% sub share & 1.5x doanh thu quảng cáo)
+    const partnerData = computeMonthlyBreakdown(viewers, subs, weeklyHours, bits, donations, 60, adsPerHour, cpm, 1.5);
+    const diffVal = partnerData.totalMonthly - totalMonthly;
+    const diffPct = totalMonthly > 0 ? Math.round((diffVal / totalMonthly) * 100) : 0;
+
+    document.getElementById('cmpCurrentVal').textContent = `$${totalMonthly.toFixed(2)}`;
+    document.getElementById('cmpPartnerVal').textContent = `$${partnerData.totalMonthly.toFixed(2)}`;
+    document.getElementById('cmpGainBadge').textContent = `${diffVal >= 0 ? '+' : ''}$${diffVal.toFixed(2)} (${diffVal >= 0 ? '+' : ''}${diffPct}%)`;
+
+    // Dự báo tăng trưởng 2x, 5x, 10x: người xem & subs * mult; quyên góp tăng bằng 80% hệ số
+    const multipliers = [2, 5, 10];
+    document.getElementById('growthCards').innerHTML = multipliers.map(mult => {
+      const gViewers = Math.round(viewers * mult);
+      const gSubs = Math.round(subs * mult);
+      const gBits = bits * mult;
+      const gDonations = donations * (0.8 * mult);
+
+      const gRes = computeMonthlyBreakdown(gViewers, gSubs, weeklyHours, gBits, gDonations, subSharePct, adsPerHour, cpm, 1.0);
+      const barWidth = Math.min(100, Math.max(12, mult * 10));
+
+      return `
+        <div class="rounded-2xl border border-neutral bg-slate-50/40 p-4 space-y-2.5">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <div class="text-xs font-bold uppercase text-primary-ink">TĂNG TRƯỞNG ${mult}&times;</div>
+              <div class="text-xs text-slate-500 font-mono mt-0.5">${gViewers.toLocaleString('en-US')} người xem &middot; ${gSubs.toLocaleString('en-US')} subs</div>
+            </div>
+            <div class="text-xl sm:text-2xl font-mono font-bold text-ink">
+              $${gRes.totalMonthly.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span class="text-sm font-sans font-semibold text-slate-500">/tháng</span>
+            </div>
+          </div>
+          <div class="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+            <div class="h-full rounded-full bg-primary" style="width: ${barWidth}%"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Gợi ý tối ưu hóa cá nhân hóa
+    let tip = '';
+    if (!isPartner) {
+      tip = `Với mức thu nhập hiện tại $${totalMonthly.toFixed(2)}/tháng, Subscriptions đang đóng góp ${pctSub.toFixed(1)}%. Việc duy trì lịch stream đều đặn ${weeklyHours} giờ/tuần, chạy quảng cáo giữa video (mid-roll) hợp lý và hướng tới tư cách Partner có thể giúp tăng thu nhập thêm khoảng $${Math.max(0, diffVal).toFixed(2)}/tháng.`;
+    } else {
+      tip = `Ở cấp độ Partner, bạn đang hưởng lợi thế từ tỷ lệ chia sẻ sub cao và khả năng kiểm soát quảng cáo linh hoạt. Hãy kết hợp đẩy mạnh tương tác Bits/Quyên góp trực tiếp và tiếp tục mở rộng người xem đồng thời trung bình để tối đa hóa doanh thu theo giờ ($${hourly.toFixed(2)}/giờ).`;
+    }
+    document.getElementById('personalTipText').textContent = tip;
+
+    document.getElementById('resultsSection').classList.remove('hidden');
+  }
+</script>
+</body>
+</html>
